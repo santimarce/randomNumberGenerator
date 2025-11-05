@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Generador Congruencial Lineal</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-container">
+      <header class="app-header">
+        <h1>Generador Congruencial Lineal</h1>
+        <p>Introduce los parámetros para generar números pseudoaleatorios.</p>
+      </header>
+
+      <section class="card">
+        <h2>Parámetros</h2>
+        <form id="lcg-form" class="form-grid" novalidate>
+          <label class="form-field">
+            <span>Semilla (X₀)</span>
+            <input type="number" id="seed" name="seed" required value="1" />
+          </label>
+          <label class="form-field">
+            <span>Multiplicador (a)</span>
+            <input type="number" id="multiplier" name="multiplier" required value="5" />
+          </label>
+          <label class="form-field">
+            <span>Incremento (c)</span>
+            <input type="number" id="increment" name="increment" required value="3" />
+          </label>
+          <label class="form-field">
+            <span>Módulo (m)</span>
+            <input type="number" id="modulus" name="modulus" required value="16" min="2" />
+          </label>
+          <label class="form-field">
+            <span>Cantidad de números</span>
+            <input type="number" id="count" name="count" required value="10" min="1" />
+          </label>
+          <div class="form-actions">
+            <button type="submit" class="btn primary">Generar</button>
+            <button type="button" id="reset-btn" class="btn secondary">Reiniciar</button>
+          </div>
+          <p class="error-message" id="form-error" role="alert" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="results card">
+        <h2>Resultados</h2>
+        <div id="results-container" class="results-container"></div>
+      </section>
+
+      <section class="chart card">
+        <h2>Diagrama de dispersión</h2>
+        <canvas id="scatter-canvas" width="600" height="400" aria-label="Gráfico de dispersión"></canvas>
+      </section>
+    </main>
+
+    <script src="script.js" defer></script>
+  </body>
+</html>
