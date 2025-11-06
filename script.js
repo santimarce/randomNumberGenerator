@@ -80,6 +80,13 @@ class ScatterPlot {
   }
 }
 
+// --- Helper: siguiente potencia de 2 >= n (mínimo 2) ---
+function nextPow2(n) {
+  if (!Number.isFinite(n) || n < 1) return 2;
+  // Evita bucles: usa log2 -> ceil -> potencia
+  return Math.max(2, 2 ** Math.ceil(Math.log2(n)));
+}
+
 class App {
   constructor() {
     this.form = document.getElementById('lcg-form');
@@ -96,6 +103,22 @@ class App {
     this.form.addEventListener('submit', this.handleSubmit);
     this.resetButton.addEventListener('click', this.handleReset);
 
+    // >>> nuevo: cuando cambia count, recalcular m y pintarlo en el input readonly
+    this.form.count.addEventListener('input', () => {
+      const countVal = Number(this.form.count.value);
+      if (Number.isInteger(countVal) && countVal >= 1) {
+        this.form.modulus.value = String(nextPow2(countVal));
+      } else {
+        this.form.modulus.value = '';
+      }
+    });
+
+    // Inicializa m en base al valor inicial de count
+    (() => {
+      const initialCount = Number(this.form.count.value);
+      this.form.modulus.value = String(nextPow2(initialCount));
+    })();
+
     this.plot.clear();
   }
 
@@ -103,56 +126,50 @@ class App {
     const seed = this.form.seed.value.trim();
     const multiplier = this.form.multiplier.value.trim();
     const increment = this.form.increment.value.trim();
-    const modulus = this.form.modulus.value.trim();
     const count = this.form.count.value.trim();
-
-    return { seed, multiplier, increment, modulus, count };
+    // Ojo: NO tomamos modulus del form para la lógica (solo para mostrar)
+    return { seed, multiplier, increment, count };
   }
 
-  validateInputs({ seed, multiplier, increment, modulus, count }) {
+  validateInputs({ seed, multiplier, increment, count }) {
     const parsed = {
       seed: Number(seed),
       multiplier: Number(multiplier),
       increment: Number(increment),
-      modulus: Number(modulus),
       count: Number(count),
     };
 
-    const values = Object.entries(parsed);
-    const invalidField = values.find(([, value]) => !Number.isInteger(value));
-
+    // Solo enteros válidos
+    const invalidField = Object.entries(parsed).find(
+      ([, v]) => !Number.isFinite(v) || !Number.isInteger(v)
+    );
     if (invalidField) {
-      throw new Error('Todos los parámetros deben ser números enteros.');
+      throw new Error('Todos los parámetros deben ser enteros (sin decimales).');
     }
 
-    if (parsed.modulus <= 1) {
-      throw new Error('El módulo debe ser un entero mayor que 1.');
+    // No negativos
+    if (parsed.seed < 0 || parsed.multiplier < 0 || parsed.increment < 0 || parsed.count < 1) {
+      throw new Error('Valores inválidos: no se permiten negativos y la cantidad debe ser ≥ 1.');
     }
 
-    if (parsed.seed < 0 || parsed.seed >= parsed.modulus) {
-      throw new Error('La semilla debe cumplir 0 ≤ semilla < módulo.');
+    // Calcular m = 2^ceil(log2(count))
+    const modulus = nextPow2(parsed.count);
+
+    // Validar semilla respecto de m
+    if (parsed.seed < 0 || parsed.seed >= modulus) {
+      throw new Error(`La semilla debe cumplir 0 ≤ semilla < módulo (m = ${modulus}).`);
     }
 
-    if (parsed.count <= 0) {
-      throw new Error('La cantidad de números debe ser mayor que 0.');
-    }
+    // Reflejar m en el input readonly por si aún no se actualizó
+    this.form.modulus.value = String(modulus);
 
-    if (parsed.count > 100) {
-      const confirmGeneration = window.confirm(
-        'Se generarán más de 100 números. ¿Deseas continuar?'
-      );
-      if (!confirmGeneration) {
-        throw new Error('Generación cancelada por el usuario.');
-      }
-    }
-
-    return parsed;
+    return { ...parsed, modulus };
   }
 
   displayResults(data) {
     this.resultsContainer.innerHTML = '';
-
     const fragment = document.createDocumentFragment();
+
     data.forEach((value, index) => {
       const item = document.createElement('div');
       item.className = 'result-item';
@@ -177,17 +194,15 @@ class App {
 
     try {
       const rawValues = this.getInputValues();
-      const { seed, multiplier, increment, modulus, count } = this.validateInputs(rawValues);
+      const { seed, multiplier, increment, count, modulus } = this.validateInputs(rawValues);
 
       const generator = new LCGGenerator(multiplier, increment, modulus, seed);
-      const data = generator.generateNormalized(count);
+      const data = generator.generateNormalized(count); // <-- Genera EXACTAMENTE "count"
 
       this.displayResults(data);
       this.plot.plot(data);
     } catch (error) {
-      if (error.message === 'Generación cancelada por el usuario.') {
-        return;
-      }
+      if (error.message === 'Generación cancelada por el usuario.') return;
       this.errorMessage.textContent = error.message;
       this.resultsContainer.innerHTML = '';
       this.plot.clear();
@@ -196,16 +211,19 @@ class App {
 
   handleReset() {
     this.form.reset();
+    // Defaults (puedes ajustarlos)
     this.form.seed.value = '1';
     this.form.multiplier.value = '5';
     this.form.increment.value = '3';
-    this.form.modulus.value = '16';
-    this.form.count.value = '10';
+    this.form.count.value = '100';
+    // Recalcular y mostrar m
+    this.form.modulus.value = String(nextPow2(Number(this.form.count.value)));
     this.errorMessage.textContent = '';
     this.resultsContainer.innerHTML = '';
     this.plot.clear();
   }
 }
+
 
 window.addEventListener('DOMContentLoaded', () => {
   new App();
